@@ -7,11 +7,18 @@
 
 import Foundation
 
-struct CurrentWeather {
-    var cityName: String
-    var temperature: String
-    var feelsLikeTemperature: String
+struct CurrentWeather: Codable {
+    let cityName: String
+    let temperatureDouble: Double
+    let feelsLikeTemperatureDouble: Double
     let conditionCode: Int
+
+    var temperature: String {
+        return String(format: "%.0f", temperatureDouble)
+    }
+    var feelsLikeTemperature: String {
+        return String(format: "%.0f", feelsLikeTemperatureDouble)
+    }
     var systemIconNameString: String {
         switch conditionCode {
         case 200...232: return "cloud.bolt.rain.fill"
@@ -23,5 +30,12 @@ struct CurrentWeather {
         case 801...804: return "cloud.fill"
         default: return "nosign"
         }
+    }
+
+    init?(currentWeatherData: CurrentWeatherData) {
+        cityName = currentWeatherData.name
+        temperatureDouble = currentWeatherData.main.temp
+        feelsLikeTemperatureDouble = currentWeatherData.main.feelsLike
+        conditionCode = currentWeatherData.weather.first?.id ?? 0
     }
 }

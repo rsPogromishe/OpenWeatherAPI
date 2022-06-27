@@ -6,8 +6,17 @@
 //
 
 import UIKit
+import CoreLocation
 
 class MainViewController: UIViewController {
+    lazy var locationManager: CLLocationManager = {
+        let location = CLLocationManager()
+        location.delegate = self
+        location.desiredAccuracy = kCLLocationAccuracyKilometer
+        location.requestWhenInUseAuthorization()
+        return location
+    }()
+
     private let backgroundImageView = UIImageView()
     private let weatherIconImageView = UIImageView()
     private let temperatureLabel = UILabel()
@@ -20,6 +29,42 @@ class MainViewController: UIViewController {
         setupBackgroundImage()
         setupSearchView()
         setupWeatherView()
+
+        if CLLocationManager.locationServicesEnabled() {
+            locationManager.requestLocation()
+        }
+    }
+
+    private func presentSearchAlertController(completionHandler: @escaping (String) -> Void) {
+        let alertController = UIAlertController(title: "Enter city name", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            let cities = ["San Francisco", "Moscow", "Vienna", "London", "Rome"]
+            textField.placeholder = cities.randomElement()
+        }
+
+        let search = UIAlertAction(title: "Search", style: .default) { _ in
+            let textField = alertController.textFields?.first
+            guard let cityName = textField?.text else { return }
+            if cityName != "" {
+                let city = cityName.split(separator: " ").joined(separator: "%20")
+                completionHandler(city)
+            }
+        }
+
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+
+        alertController.addAction(search)
+        alertController.addAction(cancel)
+        present(alertController, animated: true, completion: nil)
+    }
+
+    @objc func searchButtonTapped() {
+        presentSearchAlertController { city in
+            NetworkManager().fetchData(requestType: .cityName(city: city)) { _ in
+            } onError: { error in
+                print(error)
+            }
+        }
     }
 }
 
@@ -59,6 +104,7 @@ extension MainViewController {
         searchButton.contentVerticalAlignment = .fill
         searchButton.contentHorizontalAlignment = .fill
         searchButton.tintColor = UIColor(named: Constant.colorSet)
+        searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
 
         cityLabel.textColor = UIColor(named: Constant.colorSet)
         cityLabel.font = .systemFont(ofSize: 28, weight: .medium)
@@ -95,5 +141,16 @@ extension MainViewController {
         feelsLikeLabel.text = "Feels like 34°C"
         feelsLikeLabel.font = .systemFont(ofSize: 16, weight: .medium)
         feelsLikeLabel.textColor = UIColor(named: Constant.colorSet)
+    }
+}
+
+// MARK: CoreLocationDelegate
+
+extension MainViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print(error.localizedDescription)
     }
 }
