@@ -9,6 +9,7 @@ import UIKit
 import CoreLocation
 
 class MainViewController: UIViewController {
+    private let viewModel = ViewModel()
     lazy var locationManager: CLLocationManager = {
         let location = CLLocationManager()
         location.delegate = self
@@ -60,10 +61,19 @@ class MainViewController: UIViewController {
 
     @objc func searchButtonTapped() {
         presentSearchAlertController { city in
-            NetworkManager().fetchData(requestType: .cityName(city: city)) { _ in
-            } onError: { error in
-                print(error)
+            self.viewModel.fetchWeather(requestType: .cityName(city: city)) { [weak self] weather in
+                guard let self = self else { return }
+                self.updateInterface(weather: weather)
             }
+        }
+    }
+
+    private func updateInterface(weather: CurrentWeather) {
+        DispatchQueue.main.async {
+            self.cityLabel.text = weather.cityName
+            self.weatherIconImageView.image = UIImage(systemName: weather.systemIconNameString)
+            self.temperatureLabel.text = "\(String(describing: weather.temperature))°C"
+            self.feelsLikeLabel.text = "Feels like \(String(describing: weather.feelsLikeTemperature))°C"
         }
     }
 }
@@ -108,7 +118,6 @@ extension MainViewController {
 
         cityLabel.textColor = UIColor(named: Constant.colorSet)
         cityLabel.font = .systemFont(ofSize: 28, weight: .medium)
-        cityLabel.text = "Moscow"
     }
 
     private func setupWeatherView() {
@@ -131,14 +140,12 @@ extension MainViewController {
             feelsLikeLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
 
-        weatherIconImageView.image = UIImage(systemName: "magnifyingglass.circle.fill")
         weatherIconImageView.tintColor = UIColor(named: Constant.colorSet)
+        weatherIconImageView.contentMode = .scaleAspectFit
 
-        temperatureLabel.text = "34°C"
         temperatureLabel.font = .systemFont(ofSize: 70, weight: .medium)
         temperatureLabel.textColor = UIColor(named: Constant.colorSet)
 
-        feelsLikeLabel.text = "Feels like 34°C"
         feelsLikeLabel.font = .systemFont(ofSize: 16, weight: .medium)
         feelsLikeLabel.textColor = UIColor(named: Constant.colorSet)
     }
@@ -148,6 +155,13 @@ extension MainViewController {
 
 extension MainViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        let latitude = location.coordinate.latitude
+        let longitude = location.coordinate.longitude
+
+        viewModel.fetchWeather(requestType: .coordinate(latitude: latitude, longitude: longitude)) { weather in
+            self.updateInterface(weather: weather)
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

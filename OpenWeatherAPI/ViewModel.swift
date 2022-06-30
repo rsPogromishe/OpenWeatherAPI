@@ -8,4 +8,21 @@
 import Foundation
 
 class ViewModel {
+    private var currentWeather: CurrentWeather?
+    private let networkManager = NetworkManager()
+
+    func fetchWeather(
+        requestType: NetworkManager.RequestType,
+        onCompletion: @escaping ((CurrentWeather) -> Void)
+    ) {
+        networkManager.fetchData(
+            requestType: requestType
+        ) { [weak self] weather in
+            guard let self = self else { return }
+            onCompletion(weather)
+            self.currentWeather = weather
+        } onError: { error in
+            print(error)
+        }
+    }
 }
