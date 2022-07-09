@@ -24,6 +24,7 @@ class MainViewController: UIViewController {
     private let feelsLikeLabel = UILabel()
     private let cityLabel = UILabel()
     private let searchButton = UIButton()
+    private let locationButton = UIButton()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,35 +37,20 @@ class MainViewController: UIViewController {
         }
     }
 
-    private func presentSearchAlertController(completionHandler: @escaping (String) -> Void) {
-        let alertController = UIAlertController(title: "Enter city name", message: nil, preferredStyle: .alert)
-        alertController.addTextField { textField in
-            let cities = ["San Francisco", "Moscow", "Vienna", "London", "Rome"]
-            textField.placeholder = cities.randomElement()
-        }
-
-        let search = UIAlertAction(title: "Search", style: .default) { _ in
-            let textField = alertController.textFields?.first
-            guard let cityName = textField?.text else { return }
-            if cityName != "" {
-                let city = cityName.split(separator: " ").joined(separator: "%20")
-                completionHandler(city)
-            }
-        }
-
-        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-
-        alertController.addAction(search)
-        alertController.addAction(cancel)
-        present(alertController, animated: true, completion: nil)
-    }
-
     @objc func searchButtonTapped() {
         presentSearchAlertController { city in
             self.viewModel.fetchWeather(requestType: .cityName(city: city)) { [weak self] weather in
                 guard let self = self else { return }
                 self.updateInterface(weather: weather)
             }
+        }
+    }
+
+    @objc func locationButtonTapped() {
+        if CLLocationManager.locationServicesEnabled() {
+            locationManager.requestLocation()
+        } else {
+            presentErrorAlertController()
         }
     }
 
@@ -96,8 +82,10 @@ extension MainViewController {
     private func setupSearchView() {
         self.view.addSubview(searchButton)
         self.view.addSubview(cityLabel)
+        self.view.addSubview(locationButton)
         searchButton.translatesAutoresizingMaskIntoConstraints = false
         cityLabel.translatesAutoresizingMaskIntoConstraints = false
+        locationButton.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
             searchButton.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
@@ -107,7 +95,12 @@ extension MainViewController {
 
             cityLabel.rightAnchor.constraint(equalTo: searchButton.leftAnchor, constant: -8),
             cityLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            cityLabel.centerYAnchor.constraint(equalTo: searchButton.centerYAnchor)
+            cityLabel.centerYAnchor.constraint(equalTo: searchButton.centerYAnchor),
+
+            locationButton.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20),
+            locationButton.bottomAnchor.constraint(equalTo: searchButton.topAnchor, constant: -20),
+            locationButton.widthAnchor.constraint(equalToConstant: 40),
+            locationButton.heightAnchor.constraint(equalToConstant: 40)
         ])
 
         searchButton.setImage(UIImage(systemName: Constant.searchImageName), for: .normal)
@@ -118,6 +111,11 @@ extension MainViewController {
 
         cityLabel.textColor = UIColor(named: Constant.colorSet)
         cityLabel.font = .systemFont(ofSize: 28, weight: .medium)
+
+        locationButton.setImage(UIImage(systemName: Constant.locationImageName), for: .normal)
+        locationButton.contentVerticalAlignment = .fill
+        locationButton.contentHorizontalAlignment = .fill
+        locationButton.tintColor = UIColor(named: Constant.colorSet)
     }
 
     private func setupWeatherView() {
@@ -142,12 +140,51 @@ extension MainViewController {
 
         weatherIconImageView.tintColor = UIColor(named: Constant.colorSet)
         weatherIconImageView.contentMode = .scaleAspectFit
+        weatherIconImageView.image = UIImage(systemName: Constant.errorImageName)
 
         temperatureLabel.font = .systemFont(ofSize: 70, weight: .medium)
         temperatureLabel.textColor = UIColor(named: Constant.colorSet)
+        temperatureLabel.text = "--°C"
 
         feelsLikeLabel.font = .systemFont(ofSize: 16, weight: .medium)
         feelsLikeLabel.textColor = UIColor(named: Constant.colorSet)
+        feelsLikeLabel.text = "Feels like --°C"
+    }
+
+    private func presentSearchAlertController(completionHandler: @escaping (String) -> Void) {
+        let alertController = UIAlertController(title: "Enter city name", message: nil, preferredStyle: .alert)
+        alertController.addTextField { textField in
+            let cities = ["San Francisco", "Moscow", "Vienna", "London", "Rome"]
+            textField.placeholder = cities.randomElement()
+        }
+
+        let search = UIAlertAction(title: "Search", style: .default) { _ in
+            let textField = alertController.textFields?.first
+            guard let cityName = textField?.text else { return }
+            if cityName != "" {
+                let city = cityName.split(separator: " ").joined(separator: "%20")
+                completionHandler(city)
+            }
+        }
+
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+
+        alertController.addAction(search)
+        alertController.addAction(cancel)
+        present(alertController, animated: true, completion: nil)
+    }
+
+    private func presentErrorAlertController() {
+        let alertController = UIAlertController(
+            title: "Location services is off",
+            message: "Please, enable location services in Settings",
+            preferredStyle: .alert
+        )
+
+        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+
+        alertController.addAction(okAction)
+        present(alertController, animated: true, completion: nil)
     }
 }
 

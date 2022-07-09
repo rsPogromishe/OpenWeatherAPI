@@ -10,4 +10,6 @@ struct Constant {
     static let imageSet = "imageSet"
     static let colorSet = "colorSet"
     static let searchImageName = "magnifyingglass.circle.fill"
+    static let locationImageName = "location.circle.fill"
+    static let errorImageName = "globe"
 }
